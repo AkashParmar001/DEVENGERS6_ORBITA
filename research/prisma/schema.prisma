@@ -1,0 +1,180 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  projects  Project[] @relation("UserProjects")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String
+  owner     User     @relation("UserProjects", fields: [ownerId], references: [id])
+  scenarios Scenario[] @relation("ProjectScenarios")
+  missions  Mission[] @relation("ProjectMissions")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId], map: "project_projects_idx")
+}
+
+model Scenario {
+  id            String   @id @default(uuid())
+  name          String
+  projectId     String
+  project       Project  @relation("ProjectScenarios", fields: [projectId], references: [id])
+  seed          Int
+  spaceObjects  SpaceObject[] @relation("ScenarioObjects")
+  robotAgents   RobotAgent[] @relation("ScenarioAgents")
+  environmentConfig EnvironmentConfig?
+  missions      Mission[] @relation("ScenarioMissions")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId], map: "scenario_scenario_idx")
+}
+
+model SpaceObject {
+  id            String   @id @default(uuid())
+  scenarioId    String
+  scenario      Scenario @relation("ScenarioObjects", fields: [scenarioId], references: [id])
+  type          String   // satellite, debris, earth, etc.
+  orbitalElements Json   // semi-major axis, eccentricity, inclination, etc.
+  stateVectors  Json     // position and velocity vectors
+  dimensions    Json     // size, mass, etc.
+  status        String   // active, inactive, failed
+  metadata      Json?    // additional properties
+}
+
+model RobotAgent {
+  id            String   @id @default(uuid())
+  scenarioId    String
+  scenario      Scenario @relation("ScenarioAgents", fields: [scenarioId], references: [id])
+  capabilities  Json[]   // sensor types, actuators, etc.
+  mass          Float
+  propulsion    Json     // thrusters, fuel capacity, etc.
+  sensors       Json[]   // camera, lidar, etc.
+  actionLimits  Json     // max thrust, turn rates, etc.
+  policy        String   // current policy name or ID
+}
+
+model EnvironmentConfig {
+  id            String   @id @default(uuid())
+  scenarioId    String
+  scenario      Scenario @relation("EnvironmentConfig", fields: [scenarioId], references: [id])
+  spaceWeather  Json?    // solar flux, magnetic field, etc.
+  atmospheric   Json?    // density, temperature profiles
+  gravitational Json?    // celestial bodies, perturbations
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Mission {
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation("ProjectMissions", fields: [projectId], references: [id])
+  scenarioId    String
+  scenario      Scenario @relation("ScenarioMissions", fields: [scenarioId], references: [id])
+  objective     String
+  targetId      String?  // references SpaceObject.id
+  status        String   // planned, running, completed, failed, cancelled
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tasks         MissionTask[] @relation("MissionTasks")
+  trajectories  Trajectory[] @relation("MissionTrajectories")
+  riskAssessments RiskAssessment[] @relation("MissionRiskAssessments")
+  telemetry     Telemetry[] @relation("MissionTelemetry")
+  events        Event[] @relation("MissionEvents")
+  results       Result[] @relation("MissionResults")
+  replays       Replay[] @relation("MissionReplays")
+
+  @@index([projectId], map: "mission_mission_idx")
+}
+
+model MissionTask {
+  id            String   @id @default(uuid())
+  missionId     String
+  mission       Mission  @relation("MissionTasks", fields: [missionId], references: [id])
+  type          String   // rendezvous, approach, observation, depart, etc.
+  description   String?
+  parameters    Json     // maneuver details, sensor configs, etc.
+  sequence      Int      // order in mission plan
+  status        String   // pending, active, completed, failed
+  createdAt     DateTime @default(now())
+}
+
+model Trajectory {
+  id            String   @id @default(uuid())
+  missionId     String
+  mission       Mission  @relation("MissionTrajectories", fields: [missionId], references: [id])
+  stateVectors  Json[]   // time-series of position/velocity
+  maneuverSequence Json[] // thrust vectors over time
+  duration      Float    // total mission time in seconds
+  fuelEstimate  Float    // delta-V budget used
+  uncertainty   Json?    // covariance matrices or error bounds
+  createdAt     DateTime @default(now())
+}
+
+model RiskAssessment {
+  id            String   @id @default(uuid())
+  missionId     String
+  mission       Mission  @relation("MissionRiskAssessments", fields: [missionId], references: [id])
+  riskFactors   Json     // collision, fuel, communication, environment risks
+  confidence    Float    // 0-1 confidence in assessment
+  assumptions   Json[]   // assumptions made during assessment
+  explanation   String   // human-readable explanation
+  timestamp     DateTime @default(now())
+}
+
+model Telemetry {
+  id            String   @id @default(uuid())
+  missionId     String
+  mission       Mission  @relation("MissionTelemetry", fields: [missionId], references: [id])
+  timestamp     DateTime @default(now())
+  subsystem     String   // power, comms, propulsion, etc.
+  metric        String   // voltage, temperature, thrust, etc.
+  value         Float
+  qualityFlag   String   // nominal, degraded, failed
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  missionId     String
+  mission       Mission  @relation("MissionEvents", fields: [missionId], references: [id])
+  timestamp     DateTime @default(now())
+  type          String   // maneuver, anomaly, state_change, etc.
+  description   String?
+  data          Json?    // event-specific data
+}
+
+model Result {
+  id            String   @id @default(uuid())
+  missionId     String
+  mission       Mission  @relation("MissionResults", fields: [missionId], references: [id])
+  success       Boolean  // did mission achieve objective?
+  metrics       Json     // autonomy %, fuel used, time taken, etc.
+  completedAt   DateTime?
+}
+
+model Replay {
+  id            String   @id @default(uuid())
+  missionId     String
+  mission       Mission  @relation("MissionReplays", fields: [missionId], references: [id])
+  seed          Int      // same seed as original for reproducibility
+  scenarioVersion String  // version of scenario used
+  configuration Json      // snapshot of all config at replay time
+  metrics       Json      // replay metrics for comparison
+  createdAt     DateTime @default(now())
+}
