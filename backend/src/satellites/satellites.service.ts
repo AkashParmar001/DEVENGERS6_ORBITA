@@ -66,7 +66,10 @@ export class SatellitesService {
       .single();
 
     if (error) {
-      if (error.message?.includes('Cannot coerce') || error.code === 'PGRST116') {
+      if (
+        error.message?.includes('Cannot coerce') ||
+        error.code === 'PGRST116'
+      ) {
         throw new NotFoundException(`Satellite with ID ${id} not found`);
       }
       this.logger.error(`Error fetching satellite: ${error.message}`);

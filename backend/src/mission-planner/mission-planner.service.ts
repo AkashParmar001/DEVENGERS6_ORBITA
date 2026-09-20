@@ -2,13 +2,12 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { IntelligenceService } from '../intelligence/intelligence.service';
-import { AIProviderFactory } from '../ai/providers/ai-provider.factory';
+import { AiService } from '../ai/ai.service';
 import {
   AIProvider,
   AIChatMessage,
   AIToolDefinition,
 } from '../ai/providers/ai-provider';
-import { ORBITA_TOOLS } from '../ai/tools/tool-definitions';
 import { ToolExecutor } from '../ai/tools/tool-executor';
 import { MissionPlan } from './mission-plan.interface';
 
@@ -114,6 +113,7 @@ export class MissionPlannerService {
     private readonly supabase: SupabaseService,
     private readonly intelligence: IntelligenceService,
     private readonly toolExecutor: ToolExecutor,
+    private readonly aiService: AiService,
   ) {}
 
   async planAndExecute(
@@ -136,22 +136,7 @@ export class MissionPlannerService {
   }
 
   private createProvider(name: string): AIProvider {
-    const apiKey = this.getApiKey(name);
-    return AIProviderFactory.create(name, apiKey);
-  }
-
-  private getApiKey(provider: string): string {
-    const keyMap: Record<string, string> = {
-      groq: 'GROQ_API_KEY',
-      gemini: 'GEMINI_API_KEY',
-      openai: 'OPENAI_API_KEY',
-    };
-    const envKey = keyMap[provider];
-    if (!envKey) throw new BadRequestException(`Unknown provider: ${provider}`);
-    const key = this.config.get<string>(envKey);
-    if (!key)
-      throw new BadRequestException(`Missing environment variable: ${envKey}`);
-    return key;
+    return this.aiService.getProvider(name);
   }
 
   private async generatePlan(

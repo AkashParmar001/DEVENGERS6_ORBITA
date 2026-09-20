@@ -19,6 +19,8 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { IntelligenceModule } from './intelligence/intelligence.module';
 import { MissionPlannerModule } from './mission-planner/mission-planner.module';
 import { SimulationModule } from './simulation/simulation.module';
+import { AiModule } from './ai/ai.module';
+import { ValidationModule } from './ai/validation/validation.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
@@ -50,6 +52,8 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     IntelligenceModule,
     MissionPlannerModule,
     SimulationModule,
+    AiModule,
+    ValidationModule,
   ],
   providers: [
     {

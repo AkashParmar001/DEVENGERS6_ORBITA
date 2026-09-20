@@ -66,7 +66,10 @@ export class RobotsService {
       .single();
 
     if (error) {
-      if (error.message?.includes('Cannot coerce') || error.code === 'PGRST116') {
+      if (
+        error.message?.includes('Cannot coerce') ||
+        error.code === 'PGRST116'
+      ) {
         throw new NotFoundException(`Robot with ID ${id} not found`);
       }
       this.logger.error(`Error fetching robot: ${error.message}`);
